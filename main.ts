@@ -1,26 +1,22 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  statSync,
-} from "node:fs";
+// Entry program for news-image-20261118.
+// The image is drawn at build time and shipped in this repository as
+// entry.png; this program only copies it to the output directory the
+// grader gives us, so both graded runs write exactly the same bytes.
+import { copyFileSync, mkdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-
-const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "out";
+const IMAGE = "entry.png";
+const repoRoot = dirname(fileURLToPath(import.meta.url));
+const outDir = process.env.MAKEFUN_OUTPUT_DIR;
+if (!outDir) {
+  throw new Error("MAKEFUN_OUTPUT_DIR is not set");
+}
+const src = join(repoRoot, IMAGE);
+const dst = join(outDir, IMAGE);
 mkdirSync(outDir, { recursive: true });
-const here = dirname(fileURLToPath(import.meta.url));
-const src = join(here, "entry.png");
-if (!existsSync(src)) {
-  throw new Error("entry.png not found next to main.ts");
+copyFileSync(src, dst);
+// Fail loudly instead of shipping a truncated copy.
+if (statSync(src).size !== statSync(dst).size) {
+  throw new Error(`${IMAGE} copy is incomplete`);
 }
-const dest = join(outDir, "entry.png");
-copyFileSync(src, dest);
-const head = readFileSync(dest).subarray(0, 8);
-if (!head.equals(PNG_MAGIC)) {
-  throw new Error("entry.png is not a PNG file");
-}
-console.log(`wrote ${dest} (${statSync(dest).size} bytes)`);
